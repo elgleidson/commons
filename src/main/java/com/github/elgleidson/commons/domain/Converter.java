@@ -23,6 +23,7 @@ public interface Converter<F,T> {
    * @return the converted value or the <code>defaultValue</code> if <code>from</code> is null
    */
   default T convert(final F from, final T defaultValue) {
+    Objects.requireNonNull(defaultValue, "defaultValue cannot be null");
     return this.convert(from, () -> defaultValue);
   }
 
@@ -33,14 +34,15 @@ public interface Converter<F,T> {
    * @return the converted value or the <code>defaultValueSupplier.get()</code> if <code>from</code> is null
    */
   default T convert(final F from, final Supplier<T> defaultValueSupplier) {
-    return this.getPredicate().test(from) ? this.getConversionFunction().apply(from) : defaultValueSupplier.get();
+    Objects.requireNonNull(defaultValueSupplier, "defaultValueSupplier cannot be null");
+    return this.isConvertible(from) ? this.convertNullSafe(from) : defaultValueSupplier.get();
   }
 
-  default Predicate<F> getPredicate() {
-    return Objects::nonNull;
+  default boolean isConvertible(final F from) {
+    return from != null;
   }
 
-  Function<F,T> getConversionFunction();
+  T convertNullSafe(final F from);
 
   /**
    * Creates a converter
@@ -63,13 +65,13 @@ public interface Converter<F,T> {
 
     return new Converter<>() {
       @Override
-      public Predicate<F> getPredicate() {
-        return predicate;
+      public T convertNullSafe(F from) {
+        return function.apply(from);
       }
 
       @Override
-      public Function<F, T> getConversionFunction() {
-        return function;
+      public boolean isConvertible(F from) {
+        return predicate.test(from);
       }
     };
   }
