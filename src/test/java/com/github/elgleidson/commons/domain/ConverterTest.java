@@ -23,21 +23,21 @@ class ConverterTest {
   private static final LocalDateTime DEFAULT_VALUE = LocalDateTime.of(2020, 1, 1, 0, 0, 0);
   private static final Supplier<LocalDateTime> DEFAULT_VALUE_SUPPLIER = () -> DEFAULT_VALUE;
 
-  private Converter<String, LocalDateTime> converter = Converter.converter(LocalDateTime::parse);
+  private Converter<String, LocalDateTime> converter = Converter.create(LocalDateTime::parse);
 
   @Test
-  void testIsNullPredicateNull() {
-    assertThatNullPointerException().isThrownBy(() -> Converter.converter(Objects::toString, null)).withMessage("predicate cannot be null");
+  void createWithPredicateNullShouldThrowException() {
+    assertThatNullPointerException().isThrownBy(() -> Converter.create(Objects::toString, null)).withMessage("predicate cannot be null");
   }
 
   @Test
-  void testToValueFunctionNull() {
-    assertThatNullPointerException().isThrownBy(() -> Converter.converter(null, Objects::isNull)).withMessage("function cannot be null");
+  void createWithMapperNullShouldThrowException() {
+    assertThatNullPointerException().isThrownBy(() -> Converter.create(null, Objects::isNull)).withMessage("mapper cannot be null");
   }
 
   @Test
-  void testOnlyToValueFunction() {
-    assertThatCode(() -> Converter.converter(Objects::toString)).doesNotThrowAnyException();
+  void createWithOnlyMapperShouldNotThrowException() {
+    assertThatCode(() -> Converter.create(Objects::toString)).doesNotThrowAnyException();
   }
 
   @Test
@@ -61,62 +61,62 @@ class ConverterTest {
   }
 
   @Test
-  void convertValueConsideredNullWithoutPredicate() {
+  void convertValueConsideredInconvertibleWithoutPredicate() {
     assertThatExceptionOfType(DateTimeParseException.class).isThrownBy(() -> converter.convert("  "));
   }
 
   @Test
-  void convertValueConsideredNull() {
-    converter = Converter.converter(LocalDateTime::parse, StringUtils::isNotBlank);
+  void convertValueConsideredInconvertible() {
+    converter = Converter.create(LocalDateTime::parse, StringUtils::isNotBlank);
     assertThat(converter.convert("  ")).isNull();
   }
 
   @Test
-  void convertValueConsideredNullWithDefault() {
-    converter = Converter.converter(LocalDateTime::parse, StringUtils::isNotBlank);
+  void convertValueConsideredInconvertibleWithDefault() {
+    converter = Converter.create(LocalDateTime::parse, StringUtils::isNotBlank);
     assertThat(converter.convert("  ", DEFAULT_VALUE)).isEqualTo(DEFAULT_VALUE);
   }
 
   @Test
-  void convertValueConsideredNullWithSupplier() {
-    converter = Converter.converter(LocalDateTime::parse, StringUtils::isNotBlank);
+  void convertValueConsideredInconvertibleWithSupplier() {
+    converter = Converter.create(LocalDateTime::parse, StringUtils::isNotBlank);
     assertThat(converter.convert("  ", DEFAULT_VALUE_SUPPLIER)).isEqualTo(DEFAULT_VALUE);
   }
 
   @Test
-  void convertValueConsideredNullWithSupplierAsLambda() {
-    converter = Converter.converter(LocalDateTime::parse, stringValue -> !stringValue.isBlank() && !stringValue.equalsIgnoreCase("null"));
+  void convertValueConsideredInconvertibleWithSupplierAsLambda() {
+    converter = Converter.create(LocalDateTime::parse, stringValue -> !stringValue.isBlank() && !stringValue.equalsIgnoreCase("null"));
     assertThat(converter.convert("null", DEFAULT_VALUE_SUPPLIER)).isEqualTo(DEFAULT_VALUE);
   }
 
   @Test
-  void convertWithoutInvokeToValueFunction() {
-    Function<String, LocalDateTime> function = mock(Function.class);
+  void convertWithoutInvokeMapper() {
+    Function<String, LocalDateTime> mapper = mock(Function.class);
 
     Supplier<LocalDateTime> defaultValueSupplier = mock(Supplier.class);
     doReturn(DEFAULT_VALUE).when(defaultValueSupplier).get();
 
-    converter = Converter.converter(function);
+    converter = Converter.create(mapper);
     assertThat(converter.convert(null, defaultValueSupplier)).isEqualTo(DEFAULT_VALUE);
 
-    // assert that conversion function was NOT invoked and the default value supplier was invoke
-    verifyNoInteractions(function);
+    // assert that the mapper was NOT invoked and the default value supplier was invoke instead
+    verifyNoInteractions(mapper);
     verify(defaultValueSupplier).get();
   }
 
   @Test
   void convertInvokingToValueFunction() {
     LocalDateTime expected = LocalDateTime.of(2020, 7, 22, 10, 15, 30);
-    Function<String, LocalDateTime> function = mock(Function.class);
-    doReturn(expected).when(function).apply(anyString());
+    Function<String, LocalDateTime> mapper = mock(Function.class);
+    doReturn(expected).when(mapper).apply(anyString());
 
     Supplier<LocalDateTime> defaultValueSupplier = mock(Supplier.class);
 
-    converter = Converter.converter(function);
+    converter = Converter.create(mapper);
     assertThat(converter.convert("2020-07-22T10:15:30", defaultValueSupplier)).isEqualTo(expected);
 
-    // assert that conversion function was invoked and the default value supplier was NOT invoke
-    verify(function).apply("2020-07-22T10:15:30");
+    // assert that the mapper was invoked and the default value supplier was NOT invoke
+    verify(mapper).apply("2020-07-22T10:15:30");
     verifyNoInteractions(defaultValueSupplier);
   }
 }
